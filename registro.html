@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+<title>StickerFind - Recupera lo tuyo</title>
+<meta name="description" content="Stickers inteligentes NFC + QR para recuperar objetos perdidos" />
+
+<!-- Tailwind CSS (CDN, sin build step). Para producción real se recomienda compilar Tailwind CLI. -->
+<script src="https://cdn.tailwindcss.com"></script>
+
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          brand: {
+            50: '#eef2ff', 100: '#e0e7ff', 200: '#c7d2fe', 300: '#a5b4fc',
+            400: '#818cf8', 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca',
+            800: '#3730a3', 900: '#312e81'
+          }
+        },
+        fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'] }
+      }
+    }
+  }
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  body { font-family: 'Inter', ui-sans-serif, system-ui, sans-serif; }
+  .fade-in { animation: fadeIn .35s ease-out; }
+  @keyframes fadeIn { from { opacity:0; transform: translateY(6px);} to { opacity:1; transform: translateY(0);} }
+  .spin { animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body class="min-h-screen bg-gradient-to-b from-brand-50 via-white to-white text-slate-800">
+
+<div id="app" class="min-h-screen flex flex-col"></div>
+
+<script>
+/* ==================================================================================
+ * CONFIGURACIÓN GLOBAL
+ * ==================================================================================
+ * 1) GOOGLE_SCRIPT_URL: pega aquí la URL de tu implementación de Google Apps Script
+ *    (termina en "/exec"). Instrucciones completas en google-apps-script.gs.
+ *
+ * 2) BASE_URL: dominio donde publiques esta página. Se autodetecta con
+ *    location.origin + location.pathname para que funcione en cualquier hosting
+ *    sin tocar código. Si prefieres fijarlo manualmente:
+ *    const BASE_URL = "https://stickerfind.mx/registro.html";
+ * ================================================================================ */
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwknjQn_pwTWPgSAbMlOSyZPFztD6ZCnd7USGdyazn3Jwxwkmbamid1_U5vIfSt3Uo1/exec';
+const BASE_URL = window.location.origin + window.location.pathname;
+
+// Códigos de país más comunes para el selector de WhatsApp (por defecto México +52)
+const COUNTRY_CODES = [
+  { code: '52', label: '🇲🇽 +52 México' },
+  { code: '1',  label: '🇺🇸 +1  EE.UU./Canadá' },
+  { code: '34', label: '🇪🇸 +34 España' },
+  { code: '57', label: '🇨🇴 +57 Colombia' },
+  { code: '54', label: '🇦🇷 +54 Argentina' },
+  { code: '51', label: '🇵🇪 +51 Perú' },
+  { code: '56', label: '🇨🇱 +56 Chile' },
+  { code: '593',label: '🇪🇨 +593 Ecuador' },
+  { code: '58', label: '🇻🇪 +58 Venezuela' },
+  { code: '506',label: '🇨🇷 +506 Costa Rica' },
+  { code: '507',label: '🇵🇦 +507 Panamá' },
+  { code: '502',label: '🇬🇹 +502 Guatemala' },
+  { code: '503',label: '🇸🇻 +503 El Salvador' },
+  { code: '504',label: '🇭🇳 +504 Honduras' },
+  { code: '505',label: '🇳🇮 +505 Nicaragua' },
+];
+
+// Paquetes disponibles. Ajusta precios/nombres aquí si cambian.
+const PAQUETES = [
+  { id: 'individual', nombre: 'Kit individual', precio: 89, detalle: '1 sticker QR + chip NFC configurado' },
+  { id: 'triple', nombre: 'Paquete de 3', precio: 199, detalle: '3 stickers QR + 3 chips NFC configurados' },
+];
+
+const METODOS_PAGO = [
+  { id: 'efectivo', nombre: 'Efectivo', detalle: 'Pagas en efectivo cuando te entreguemos tu kit.' },
+  { id: 'transferencia', nombre: 'Transferencia o tarjeta', detalle: 'Te compartimos los datos de pago por WhatsApp para completar tu transferencia.' },
+];
+
+/* ==================================================================================
+ * CAPA DE DATOS: llamadas al backend de Google Apps Script (usa Google Sheets como DB)
+ * ==================================================================================
+ * Nota técnica: en las llamadas POST no se fija el header "Content-Type" a
+ * propósito. Así el navegador la trata como "solicitud simple" y evita el
+ * preflight OPTIONS, que Apps Script no maneja bien. El script igual puede leer
+ * el JSON desde e.postData.contents sin problema.
+ * ================================================================================ */
+
+async function apiRegister(payload) {
+  const res = await fetch(GOOGLE_SCRIPT_URL, {
+    method: 'POST',
+    body: JSON.stringify({ action: 'register', ...payload }),
+  });
+  return res.json();
+}
+
+async function apiGetTag(id) {
+  const res = await fetch(`${GOOGLE_SCRIPT_URL}?action=get&id=${encodeURIComponent(id)}`);
+  return res.json();
+}
+
+async function apiMarcarRecuperado(id, recuperado) {
+  const res = await fetch(GOOGLE_SCRIPT_URL, {
+    method: 'POST',
+    body: JSON.stringify({ action: 'marcarRecuperado', id, recuperado }),
+  });
+  return res.json();
+}
+
+/* ==================================================================================
+ * UTILIDADES
+ * ================================================================================ */
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str ?? '';
+  return div.innerHTML;
+}
+
+function onlyDigits(str) {
+  return (str || '').replace(/\D/g, '');
+}
+
+function isConfigured() {
+  return GOOGLE_SCRIPT_URL && GOOGLE_SCRIPT_URL.startsWith('http');
+}
+
+function fmtMoney(n) {
+  return `$${n} MXN`;
+}
+
+/* ==================================================================================
+ * ICONOS SVG (inline, sin dependencias externas)
+ * ================================================================================ */
+const ICONS = {
+  whatsapp: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="currentColor" class="w-5 h-5"><path d="M16.004 3C9.4 3 4 8.373 4 15c0 2.34.66 4.52 1.8 6.39L4 29l7.79-1.75A11.9 11.9 0 0 0 16 27c6.6 0 12-5.373 12-12S22.6 3 16.004 3zm0 21.6c-1.98 0-3.83-.55-5.41-1.5l-.39-.23-4.62 1.04 1-4.5-.25-.4A9.55 9.55 0 0 1 6.4 15c0-5.29 4.31-9.6 9.6-9.6 5.29 0 9.6 4.31 9.6 9.6s-4.31 9.6-9.6 9.6zm5.4-7.19c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.65.07-.3-.15-1.25-.46-2.38-1.47-.88-.78-1.47-1.75-1.65-2.05-.17-.3-.02-.46.13-.6.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.07-.15-.67-1.62-.92-2.22-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.79.37-.27.3-1.04 1.02-1.04 2.48 0 1.46 1.07 2.87 1.22 3.07.15.2 2.1 3.2 5.08 4.49.71.31 1.26.49 1.69.63.71.22 1.35.19 1.86.12.57-.09 1.76-.72 2-1.41.25-.7.25-1.29.17-1.41-.07-.13-.27-.2-.57-.35z"/></svg>`,
+  mail: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l9 6 9-6M3 6h18v12H3z"/></svg>`,
+  tag: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-8 h-8"><path stroke-linecap="round" stroke-linejoin="round" d="M20.59 13.41L11 3.83A2 2 0 009.59 3.24L4 3a1 1 0 00-1 1l.24 5.59a2 2 0 00.58 1.41l9.58 9.58a2 2 0 002.83 0l4.36-4.36a2 2 0 000-2.83z"/><circle cx="7.5" cy="7.5" r="1.5" fill="currentColor" stroke="none"/></svg>`,
+  check: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>`,
+  gift: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M20 12v9H4v-9M2 7h20v5H2V7zm10 0V4a2.5 2.5 0 10-2.5 2.5H12zm0 0V4a2.5 2.5 0 112.5 2.5H12z"/></svg>`,
+};
+
+function spinner() {
+  return `<div class="flex justify-center py-10"><div class="w-6 h-6 border-2 border-brand-200 border-t-brand-600 rounded-full spin"></div></div>`;
+}
+
+/* ==================================================================================
+ * LAYOUT COMÚN
+ * ================================================================================ */
+function renderShell(innerHtml) {
+  document.getElementById('app').innerHTML = `
+    <header class="w-full py-5 px-4 flex items-center justify-center gap-2 border-b border-slate-100 bg-white/70 backdrop-blur">
+      <a href="index.html" class="flex items-center gap-2">
+        <div class="w-9 h-9 rounded-xl bg-brand-600 text-white flex items-center justify-center shadow-md shadow-brand-200">
+          ${ICONS.tag}
+        </div>
+        <span class="text-lg font-extrabold tracking-tight text-slate-800">Sticker<span class="text-brand-600">Find</span></span>
+      </a>
+    </header>
+    <main class="flex-1 w-full flex items-start sm:items-center justify-center px-4 py-6 sm:py-10">
+      <div class="w-full max-w-md fade-in">
+        ${innerHtml}
+      </div>
+    </main>
+    <footer class="text-center text-xs text-slate-400 py-4 px-4">
+      Proyecto universitario · Stickers NFC + QR para objetos perdidos
+    </footer>
+  `;
+}
+
+/* ==================================================================================
+ * VISTA 1: FORMULARIO PÚBLICO DE REGISTRO
+ * ==================================================================================
+ * El estudiante solo deja sus datos de contacto. NO ve ningún QR ni enlace aquí:
+ * ese enlace se genera en la base de datos y lo revisas tú desde admin.html, donde
+ * decides cuándo imprimir la etiqueta y configurar el chip NFC para entregárselo.
+ * ================================================================================ */
+function renderRegistro() {
+  if (!isConfigured()) {
+    renderShell(`
+      <div class="bg-amber-50 border border-amber-200 rounded-2xl p-6 text-sm text-amber-800">
+        <p class="font-semibold mb-1">⚠️ Falta configurar el backend</p>
+        <p>Define <code class="bg-amber-100 px-1 rounded">GOOGLE_SCRIPT_URL</code> en <code class="bg-amber-100 px-1 rounded">registro.html</code> con la URL de tu Google Apps Script. Instrucciones en <code class="bg-amber-100 px-1 rounded">google-apps-script.gs</code>.</p>
+      </div>
+    `);
+    return;
+  }
+
+  renderShell(`
+    <div class="bg-white rounded-2xl shadow-xl shadow-slate-200/60 border border-slate-100 p-6 sm:p-8">
+      <h1 class="text-xl font-bold text-slate-900">Protege tus objetos</h1>
+      <p class="text-sm text-slate-500 mt-1 mb-6">Deja tus datos y nos pondremos en contacto contigo para entregarte tu sticker QR + chip NFC.</p>
+
+      <form id="registro-form" class="space-y-4" novalidate>
+
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-2">Elige tu paquete</label>
+          <div class="grid grid-cols-2 gap-3">
+            ${PAQUETES.map((p, i) => `
+              <label class="paquete-option cursor-pointer rounded-xl border-2 border-slate-200 p-3 text-center hover:border-brand-300 transition">
+                <input type="radio" name="paquete" value="${p.id}" class="sr-only" ${i === 0 ? 'checked' : ''} />
+                <p class="text-sm font-bold text-slate-900">${escapeHtml(p.nombre)}</p>
+                <p class="text-lg font-extrabold text-brand-600 mt-0.5">${fmtMoney(p.precio)}</p>
+                <p class="text-[11px] text-slate-500 mt-1 leading-tight">${escapeHtml(p.detalle)}</p>
+              </label>
+            `).join('')}
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-2">Método de pago</label>
+          <div class="space-y-2">
+            ${METODOS_PAGO.map((m, i) => `
+              <label class="metodo-option cursor-pointer flex items-start gap-2 rounded-xl border-2 border-slate-200 p-3 hover:border-brand-300 transition">
+                <input type="radio" name="metodoPago" value="${m.id}" class="mt-0.5" ${i === 0 ? 'checked' : ''} />
+                <span>
+                  <span class="block text-sm font-semibold text-slate-800">${escapeHtml(m.nombre)}</span>
+                  <span class="block text-xs text-slate-500">${escapeHtml(m.detalle)}</span>
+                </span>
+              </label>
+            `).join('')}
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">Nombre completo</label>
+          <input id="f-nombre" type="text" required placeholder="Ej. Ana Gómez"
+            class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent" />
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">Carrera</label>
+          <input id="f-carrera" type="text" required placeholder="Ej. Ing. en Sistemas Computacionales"
+            class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent" />
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">Centro universitario</label>
+          <input id="f-centro" type="text" required placeholder="Ej. Campus Central"
+            class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent" />
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">Número de WhatsApp</label>
+          <div class="flex gap-2">
+            <select id="f-country" class="rounded-xl border border-slate-300 px-2 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-500">
+              ${COUNTRY_CODES.map(c => `<option value="${c.code}" ${c.code === '52' ? 'selected' : ''}>${c.label}</option>`).join('')}
+            </select>
+            <input id="f-telefono" type="tel" required placeholder="10 dígitos, sin espacios"
+              class="flex-1 rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent" />
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">Correo electrónico</label>
+          <input id="f-correo" type="email" required placeholder="tucorreo@ejemplo.com"
+            class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent" />
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">Recompensa <span class="text-slate-400 font-normal">(opcional)</span></label>
+          <input id="f-recompensa" type="text" placeholder="Ej. $100 o un café"
+            class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent" />
+          <p class="text-xs text-slate-400 mt-1">Se mostrará a quien encuentre tu objeto como incentivo para devolverlo.</p>
+        </div>
+
+        <p id="form-error" class="text-sm text-red-500 hidden"></p>
+
+        <button type="submit" id="btn-submit"
+          class="w-full bg-brand-600 hover:bg-brand-700 active:scale-[0.98] transition text-white font-semibold py-3 rounded-xl shadow-lg shadow-brand-600/20">
+          Enviar solicitud
+        </button>
+      </form>
+    </div>
+  `);
+
+  // Resalta visualmente la tarjeta de paquete / método de pago seleccionado
+  const highlightSelection = (name, activeClass) => {
+    const inputs = document.querySelectorAll(`input[name="${name}"]`);
+    const update = () => {
+      inputs.forEach(input => {
+        input.closest('label').classList.toggle('border-brand-500', input.checked);
+        input.closest('label').classList.toggle('bg-brand-50', input.checked);
+      });
+    };
+    inputs.forEach(input => input.addEventListener('change', update));
+    update();
+  };
+  highlightSelection('paquete');
+  highlightSelection('metodoPago');
+
+  document.getElementById('registro-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const nombre = document.getElementById('f-nombre').value.trim();
+    const carrera = document.getElementById('f-carrera').value.trim();
+    const centro = document.getElementById('f-centro').value.trim();
+    const countryCode = document.getElementById('f-country').value;
+    const telefonoLocal = onlyDigits(document.getElementById('f-telefono').value);
+    const correo = document.getElementById('f-correo').value.trim();
+    const recompensa = document.getElementById('f-recompensa').value.trim();
+    const paqueteId = document.querySelector('input[name="paquete"]:checked').value;
+    const metodoPagoId = document.querySelector('input[name="metodoPago"]:checked').value;
+    const paquete = PAQUETES.find(p => p.id === paqueteId);
+    const metodoPago = METODOS_PAGO.find(m => m.id === metodoPagoId);
+
+    const errorEl = document.getElementById('form-error');
+    errorEl.classList.add('hidden');
+
+    if (!nombre || !carrera || !centro || !telefonoLocal || !correo) {
+      errorEl.textContent = 'Por favor completa todos los campos obligatorios.';
+      errorEl.classList.remove('hidden');
+      return;
+    }
+    if (telefonoLocal.length < 7) {
+      errorEl.textContent = 'Ingresa un número de WhatsApp válido.';
+      errorEl.classList.remove('hidden');
+      return;
+    }
+
+    const btn = document.getElementById('btn-submit');
+    btn.disabled = true;
+    btn.textContent = 'Enviando...';
+
+    try {
+      const result = await apiRegister({
+        nombre, carrera, centro,
+        telefono: `${countryCode}${telefonoLocal}`,
+        correo, recompensa,
+        paquete: paquete.nombre,
+        metodoPago: metodoPago.nombre,
+      });
+
+      if (!result.ok) throw new Error(result.error || 'Error desconocido');
+
+      const pagoMsg = metodoPago.id === 'efectivo'
+        ? `Pagarás <strong>${fmtMoney(paquete.precio)}</strong> en efectivo cuando te entreguemos tu kit.`
+        : `Te enviaremos los datos de pago por WhatsApp para completar tu transferencia de <strong>${fmtMoney(paquete.precio)}</strong>.`;
+
+      renderShell(`
+        <div class="bg-white rounded-2xl shadow-xl shadow-slate-200/60 border border-slate-100 p-6 sm:p-8 text-center">
+          <div class="inline-flex items-center gap-2 bg-emerald-50 text-emerald-700 text-xs font-semibold px-3 py-1 rounded-full mb-4">
+            ${ICONS.check} ¡Solicitud recibida!
+          </div>
+          <h1 class="text-xl font-bold text-slate-900">Gracias, ${escapeHtml(nombre)}</h1>
+          <p class="text-sm text-slate-500 mt-2">Tu código de referencia es <span class="font-mono font-semibold text-slate-700">${escapeHtml(result.id)}</span> · ${escapeHtml(paquete.nombre)}.</p>
+          <p class="text-sm text-slate-500 mt-3">${pagoMsg}</p>
+          <p class="text-sm text-slate-500 mt-3">Nos pondremos en contacto por WhatsApp para coordinar la entrega de tu sticker QR + chip NFC.</p>
+        </div>
+      `);
+    } catch (err) {
+      btn.disabled = false;
+      btn.textContent = 'Enviar solicitud';
+      errorEl.textContent = 'No se pudo enviar tu solicitud. Intenta de nuevo en unos minutos.';
+      errorEl.classList.remove('hidden');
+    }
+  });
+}
+
+/* ==================================================================================
+ * VISTA 2: MÓDULO PÚBLICO DE RECUPERACIÓN (al escanear QR o acercar NFC)
+ * ================================================================================ */
+async function renderPublico(id) {
+  renderShell(spinner());
+
+  const result = await apiGetTag(id);
+
+  if (!result.ok) {
+    renderShell(`
+      <div class="bg-white rounded-2xl shadow-xl border border-slate-100 p-8 text-center">
+        <div class="text-4xl mb-3">🔍</div>
+        <h1 class="text-lg font-bold text-slate-800">Tag no encontrado</h1>
+        <p class="text-sm text-slate-500 mt-2">El código <strong>${escapeHtml(id)}</strong> no existe en nuestra base de datos.</p>
+      </div>
+    `);
+    return;
+  }
+
+  drawPublico(result.data);
+}
+
+function drawPublico(record) {
+  const id = record.ID;
+  const waMessage = `Hola ${record.Nombre}, encontré un objeto tuyo con el código ${id}. Te contacto para devolvértelo.`;
+  const waUrl = `https://wa.me/${record.Telefono}?text=${encodeURIComponent(waMessage)}`;
+  const mailSubject = `Encontré tu objeto (${id})`;
+  const mailBody = `Hola ${record.Nombre},\n\nEncontré un objeto tuyo con el código ${id}. Te contacto para devolvértelo.`;
+  const mailUrl = `mailto:${record.Correo}?subject=${encodeURIComponent(mailSubject)}&body=${encodeURIComponent(mailBody)}`;
+
+  const isRecovered = record.Recuperado === 'Sí';
+
+  renderShell(`
+    <div class="bg-white rounded-2xl shadow-xl shadow-slate-200/60 border border-slate-100 overflow-hidden">
+
+      <div class="bg-gradient-to-br from-brand-600 to-brand-800 text-white px-6 py-6 text-center">
+        <div class="text-3xl mb-1">📦</div>
+        <h1 class="text-lg font-bold">¡Objeto encontrado!</h1>
+        <p class="text-sm text-brand-100 mt-0.5">Ayuda a devolverlo a su dueño</p>
+      </div>
+
+      ${isRecovered ? `
+        <div class="bg-emerald-50 text-emerald-700 text-sm font-semibold text-center py-2.5 flex items-center justify-center gap-2">
+          ${ICONS.check} Este objeto ya fue marcado como recuperado
+        </div>
+      ` : ''}
+
+      <div class="p-6 sm:p-8 space-y-5">
+        <div class="grid grid-cols-2 gap-3 text-center">
+          <div class="bg-slate-50 rounded-xl py-3 px-2">
+            <p class="text-xs text-slate-400 font-medium">Dueño</p>
+            <p class="text-sm font-semibold text-slate-800 mt-0.5">${escapeHtml(record.Nombre)}</p>
+          </div>
+          <div class="bg-slate-50 rounded-xl py-3 px-2">
+            <p class="text-xs text-slate-400 font-medium">Carrera</p>
+            <p class="text-sm font-semibold text-slate-800 mt-0.5">${escapeHtml(record.Carrera)}</p>
+          </div>
+        </div>
+
+        <div class="bg-slate-50 rounded-xl py-3 px-2 text-center">
+          <p class="text-xs text-slate-400 font-medium">Centro universitario</p>
+          <p class="text-sm font-semibold text-slate-800 mt-0.5">${escapeHtml(record.Centro)}</p>
+        </div>
+
+        ${record.Recompensa ? `
+          <div class="bg-amber-50 border border-amber-100 rounded-xl px-4 py-3 flex items-center gap-2">
+            <span class="text-amber-600">${ICONS.gift}</span>
+            <p class="text-sm text-amber-800"><strong>Recompensa:</strong> ${escapeHtml(record.Recompensa)}</p>
+          </div>
+        ` : ''}
+
+        <div class="space-y-3 pt-1">
+          <a href="${waUrl}" target="_blank" rel="noopener noreferrer"
+            class="flex items-center justify-center gap-2 bg-[#25D366] hover:brightness-95 active:scale-[0.98] transition text-white font-semibold py-3.5 rounded-xl shadow-lg shadow-green-500/20">
+            ${ICONS.whatsapp} Contactar por WhatsApp
+          </a>
+          <a href="${mailUrl}"
+            class="flex items-center justify-center gap-2 bg-white border border-slate-300 hover:bg-slate-50 active:scale-[0.98] transition text-slate-700 font-semibold py-3 rounded-xl">
+            ${ICONS.mail} Enviar correo
+          </a>
+        </div>
+
+        <div class="pt-3 border-t border-slate-100 text-center">
+          <button id="btn-toggle-recuperado"
+            class="inline-flex items-center gap-1.5 text-xs font-medium text-slate-400 hover:text-brand-600 transition">
+            ${isRecovered ? 'Marcar como activo de nuevo' : '¿Eres el dueño? Marcar como recuperado'}
+          </button>
+        </div>
+      </div>
+    </div>
+  `);
+
+  document.getElementById('btn-toggle-recuperado').addEventListener('click', async (e) => {
+    const btn = e.currentTarget;
+    const nextState = !isRecovered;
+    if (nextState && !confirm('¿Confirmas que ya recuperaste este objeto?')) return;
+    btn.disabled = true;
+    try {
+      const result = await apiMarcarRecuperado(id, nextState);
+      if (!result.ok) throw new Error(result.error || 'Error desconocido');
+      drawPublico({ ...record, Recuperado: nextState ? 'Sí' : 'No' });
+    } catch (err) {
+      btn.disabled = false;
+      alert('No se pudo actualizar el estado. Intenta de nuevo.');
+    }
+  });
+}
+
+/* ==================================================================================
+ * ROUTER PRINCIPAL (basado en query params, sin dependencias de servidor)
+ * ================================================================================ */
+function router() {
+  const params = new URLSearchParams(window.location.search);
+  const id = params.get('id');
+
+  if (id) {
+    renderPublico(id);
+  } else {
+    renderRegistro();
+  }
+}
+
+window.addEventListener('DOMContentLoaded', router);
+window.addEventListener('popstate', router);
+</script>
+</body>
+</html>

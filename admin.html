@@ -48,12 +48,12 @@
  *    (queda expuesta a quien la abra e inspeccione el HTML). Es una protección
  *    ligera pensada para un equipo pequeño y de confianza, no para datos críticos.
  *    Por eso este archivo NO debe enlazarse desde ningún lugar público.
- * 3) BASE_URL: el dominio público donde vive index.html (para armar el link de
- *    cada sticker). Ajusta si el admin y el sitio público viven en rutas distintas.
+ * 3) BASE_URL: el dominio público donde vive registro.html (para armar el link
+ *    de cada sticker). Ajusta si el admin y el sitio público viven en rutas distintas.
  * ================================================================================ */
 const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwknjQn_pwTWPgSAbMlOSyZPFztD6ZCnd7USGdyazn3Jwxwkmbamid1_U5vIfSt3Uo1/exec';
 const ADMIN_PASSWORD = 'CUTONALA';
-const BASE_URL = window.location.origin + window.location.pathname.replace(/admin\.html$/, '');
+const BASE_URL = window.location.origin + window.location.pathname.replace(/admin\.html$/, 'registro.html');
 
 const ESTADOS = ['Pendiente de pago', 'Pagado', 'Entregado'];
 const ESTADO_COLORS = {
