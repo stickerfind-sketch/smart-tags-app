@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>StickerFind Admin</title>
+<meta name="robots" content="noindex, nofollow" />
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          brand: {
+            50: '#eef2ff', 100: '#e0e7ff', 200: '#c7d2fe', 300: '#a5b4fc',
+            400: '#818cf8', 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca',
+            800: '#3730a3', 900: '#312e81'
+          }
+        },
+        fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'] }
+      }
+    }
+  }
+</script>
+<!-- Librería para generar los códigos QR de cada registro (QRious, UMD build vía cdnjs) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  body { font-family: 'Inter', ui-sans-serif, system-ui, sans-serif; }
+  .spin { animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body class="min-h-screen bg-slate-50 text-slate-800">
+
+<div id="app" class="min-h-screen"></div>
+
+<script>
+/* ==================================================================================
+ * CONFIGURACIÓN GLOBAL — panel de administrador (NO enlazar esta página públicamente)
+ * ==================================================================================
+ * 1) GOOGLE_SCRIPT_URL: la MISMA URL de Apps Script que pusiste en index.html.
+ * 2) ADMIN_PASSWORD: debe coincidir EXACTO con ADMIN_SECRET en google-apps-script.gs.
+ *    Nota de seguridad: esta clave viaja visible en el código fuente de esta página
+ *    (queda expuesta a quien la abra e inspeccione el HTML). Es una protección
+ *    ligera pensada para un equipo pequeño y de confianza, no para datos críticos.
+ *    Por eso este archivo NO debe enlazarse desde ningún lugar público.
+ * 3) BASE_URL: el dominio público donde vive index.html (para armar el link de
+ *    cada sticker). Ajusta si el admin y el sitio público viven en rutas distintas.
+ * ================================================================================ */
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwknjQn_pwTWPgSAbMlOSyZPFztD6ZCnd7USGdyazn3Jwxwkmbamid1_U5vIfSt3Uo1/exec';
+const ADMIN_PASSWORD = 'CUTONALA';
+const BASE_URL = window.location.origin + window.location.pathname.replace(/admin\.html$/, '');
+
+const ESTADOS = ['Pendiente de pago', 'Pagado', 'Entregado'];
+const ESTADO_COLORS = {
+  'Pendiente de pago': 'bg-amber-100 text-amber-700',
+  'Pagado': 'bg-blue-100 text-blue-700',
+  'Entregado': 'bg-emerald-100 text-emerald-700',
+};
+
+const SESSION_KEY = 'stickerfind_admin_secret';
+
+/* ==================================================================================
+ * CAPA DE DATOS
+ * ================================================================================ */
+async function apiList(secret) {
+  const res = await fetch(`${GOOGLE_SCRIPT_URL}?action=list&secret=${encodeURIComponent(secret)}`);
+  return res.json();
+}
+
+async function apiUpdateEstado(id, estado, secret) {
+  const res = await fetch(GOOGLE_SCRIPT_URL, {
+    method: 'POST',
+    body: JSON.stringify({ action: 'updateEstado', id, estado, secret }),
+  });
+  return res.json();
+}
+
+/* ==================================================================================
+ * UTILIDADES
+ * ================================================================================ */
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str ?? '';
+  return div.innerHTML;
+}
+
+function buildTagUrl(id) {
+  return `${BASE_URL}?id=${encodeURIComponent(id)}`;
+}
+
+function isConfigured() {
+  return GOOGLE_SCRIPT_URL && GOOGLE_SCRIPT_URL.startsWith('http');
+}
+
+function fmtDate(value) {
+  if (!value) return '—';
+  const d = new Date(value);
+  return isNaN(d) ? String(value) : d.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+const ICONS = {
+  copy: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-8 12h8a2 2 0 002-2v-8a2 2 0 00-2-2H10a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>`,
+  download: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3"/></svg>`,
+  check: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>`,
+  refresh: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h5M20 20v-5h-5M4.5 9a8 8 0 0113.9-3M19.5 15a8 8 0 01-13.9 3"/></svg>`,
+};
+
+/* ==================================================================================
+ * LOGIN
+ * ================================================================================ */
+function renderLogin(errorMsg) {
+  document.getElementById('app').innerHTML = `
+    <div class="min-h-screen flex items-center justify-center px-4">
+      <div class="w-full max-w-xs bg-white rounded-2xl shadow-xl border border-slate-100 p-6">
+        <h1 class="text-lg font-bold text-slate-900 mb-1">Panel de administrador</h1>
+        <p class="text-sm text-slate-500 mb-4">Ingresa la clave de acceso.</p>
+        <input id="pw-input" type="password" placeholder="Clave"
+          class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-brand-500" />
+        ${errorMsg ? `<p class="text-xs text-red-500 mb-2">${escapeHtml(errorMsg)}</p>` : ''}
+        <button id="btn-login" class="w-full bg-brand-600 hover:bg-brand-700 text-white font-semibold py-2.5 rounded-xl text-sm">Entrar</button>
+      </div>
+    </div>
+  `;
+
+  const tryLogin = async () => {
+    const pw = document.getElementById('pw-input').value.trim();
+    if (!pw) return;
+    try {
+      const result = await apiList(pw);
+      if (result.ok) {
+        sessionStorage.setItem(SESSION_KEY, pw);
+        renderDashboard(result.data, pw);
+      } else {
+        renderLogin('Clave incorrecta.');
+      }
+    } catch (err) {
+      renderLogin('No se pudo conectar con el servidor. Intenta de nuevo.');
+    }
+  };
+
+  document.getElementById('btn-login').addEventListener('click', tryLogin);
+  document.getElementById('pw-input').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') tryLogin();
+  });
+  document.getElementById('pw-input').focus();
+}
+
+/* ==================================================================================
+ * DASHBOARD
+ * ================================================================================ */
+function renderDashboard(records, secret) {
+  const pendientes = records.filter(r => r.Estado !== 'Entregado').length;
+
+  document.getElementById('app').innerHTML = `
+    <header class="bg-white border-b border-slate-200 px-4 sm:px-6 py-4 flex items-center justify-between sticky top-0 z-10">
+      <div>
+        <h1 class="text-lg font-bold text-slate-900">Registros StickerFind</h1>
+        <p class="text-xs text-slate-500">${records.length} total · ${pendientes} pendientes de entrega</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <input id="search-input" type="text" placeholder="Buscar nombre o ID..."
+          class="hidden sm:block rounded-xl border border-slate-300 px-3 py-2 text-sm w-56 focus:outline-none focus:ring-2 focus:ring-brand-500" />
+        <button id="btn-refresh" class="flex items-center gap-1.5 text-sm font-medium text-slate-600 border border-slate-300 rounded-xl px-3 py-2 hover:bg-slate-50">
+          ${ICONS.refresh} Actualizar
+        </button>
+      </div>
+    </header>
+
+    <div class="px-4 sm:px-6 pt-3">
+      <input id="search-input-mobile" type="text" placeholder="Buscar nombre o ID..."
+        class="sm:hidden w-full rounded-xl border border-slate-300 px-3 py-2 text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-brand-500" />
+    </div>
+
+    <main id="cards-container" class="px-4 sm:px-6 py-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></main>
+  `;
+
+  document.getElementById('btn-refresh').addEventListener('click', async () => {
+    const fresh = await apiList(secret);
+    if (fresh.ok) renderDashboard(fresh.data, secret);
+  });
+
+  const doFilter = (value) => {
+    const q = value.trim().toLowerCase();
+    const filtered = !q ? records : records.filter(r =>
+      (r.Nombre || '').toLowerCase().includes(q) || (r.ID || '').toLowerCase().includes(q)
+    );
+    renderCards(filtered, secret);
+  };
+
+  document.getElementById('search-input').addEventListener('input', (e) => doFilter(e.target.value));
+  document.getElementById('search-input-mobile').addEventListener('input', (e) => doFilter(e.target.value));
+
+  renderCards(records, secret);
+}
+
+function renderCards(records, secret) {
+  const container = document.getElementById('cards-container');
+
+  if (records.length === 0) {
+    container.innerHTML = `<p class="text-sm text-slate-400 col-span-full text-center py-10">Sin registros.</p>`;
+    return;
+  }
+
+  // Ordena: pendientes de entrega primero, luego por fecha descendente
+  const sorted = [...records].sort((a, b) => {
+    if (a.Estado === 'Entregado' && b.Estado !== 'Entregado') return 1;
+    if (a.Estado !== 'Entregado' && b.Estado === 'Entregado') return -1;
+    return new Date(b.FechaRegistro) - new Date(a.FechaRegistro);
+  });
+
+  container.innerHTML = sorted.map(r => `
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 flex flex-col gap-3" data-id="${escapeHtml(r.ID)}">
+      <div class="flex items-start justify-between gap-2">
+        <div>
+          <p class="font-bold text-slate-900 text-sm">${escapeHtml(r.Nombre)}</p>
+          <p class="text-xs text-slate-500">${escapeHtml(r.Carrera)} · ${escapeHtml(r.Centro)}</p>
+        </div>
+        <span class="shrink-0 text-[10px] font-mono font-semibold text-slate-400">${escapeHtml(r.ID)}</span>
+      </div>
+
+      <div class="flex items-center justify-center bg-slate-50 rounded-xl py-3">
+        <canvas class="qr-canvas" width="130" height="130"></canvas>
+      </div>
+
+      <div class="text-xs text-slate-500 space-y-0.5">
+        <p>📱 ${escapeHtml(r.Telefono)}</p>
+        <p>✉️ ${escapeHtml(r.Correo)}</p>
+        ${r.Recompensa ? `<p>🎁 ${escapeHtml(r.Recompensa)}</p>` : ''}
+        <p>📅 ${fmtDate(r.FechaRegistro)}</p>
+        ${r.Recuperado === 'Sí' ? `<p class="text-emerald-600 font-medium">${ICONS.check} Objeto recuperado</p>` : ''}
+      </div>
+
+      <div class="flex gap-2">
+        <button class="btn-copy flex-1 flex items-center justify-center gap-1 text-xs font-medium bg-slate-800 hover:bg-slate-900 text-white py-2 rounded-lg">
+          ${ICONS.copy} Copiar
+        </button>
+        <button class="btn-download flex-1 flex items-center justify-center gap-1 text-xs font-medium bg-brand-600 hover:bg-brand-700 text-white py-2 rounded-lg">
+          ${ICONS.download} QR
+        </button>
+      </div>
+
+      <select class="select-estado w-full text-xs font-medium rounded-lg px-2 py-2 border-0 ${ESTADO_COLORS[r.Estado] || 'bg-slate-100'}">
+        ${ESTADOS.map(e => `<option value="${e}" ${e === r.Estado ? 'selected' : ''}>${e}</option>`).join('')}
+      </select>
+    </div>
+  `).join('');
+
+  // Renderiza cada QR y conecta los botones de esa tarjeta
+  container.querySelectorAll('[data-id]').forEach(card => {
+    const id = card.getAttribute('data-id');
+    const tagUrl = buildTagUrl(id);
+    const canvas = card.querySelector('.qr-canvas');
+    new QRious({ element: canvas, value: tagUrl, size: 130, background: '#ffffff', foreground: '#1e1b4b', level: 'H', padding: 8 });
+
+    card.querySelector('.btn-copy').addEventListener('click', async (e) => {
+      const btn = e.currentTarget;
+      try {
+        await navigator.clipboard.writeText(tagUrl);
+      } catch (err) {
+        const tmp = document.createElement('textarea');
+        tmp.value = tagUrl;
+        document.body.appendChild(tmp);
+        tmp.select();
+        document.execCommand('copy');
+        document.body.removeChild(tmp);
+      }
+      const original = btn.innerHTML;
+      btn.innerHTML = `${ICONS.check} Copiado`;
+      setTimeout(() => { btn.innerHTML = original; }, 1600);
+    });
+
+    card.querySelector('.btn-download').addEventListener('click', () => {
+      const hiRes = document.createElement('canvas');
+      new QRious({ element: hiRes, value: tagUrl, size: 1024, background: '#ffffff', foreground: '#1e1b4b', level: 'H', padding: 48 });
+      const link = document.createElement('a');
+      link.download = `${id}-qr.png`;
+      link.href = hiRes.toDataURL('image/png');
+      link.click();
+    });
+
+    card.querySelector('.select-estado').addEventListener('change', async (e) => {
+      const select = e.currentTarget;
+      const nuevoEstado = select.value;
+      select.disabled = true;
+      try {
+        const result = await apiUpdateEstado(id, nuevoEstado, secret);
+        if (!result.ok) throw new Error(result.error || 'Error desconocido');
+        select.className = `select-estado w-full text-xs font-medium rounded-lg px-2 py-2 border-0 ${ESTADO_COLORS[nuevoEstado] || 'bg-slate-100'}`;
+      } catch (err) {
+        alert('No se pudo actualizar el estado.');
+      } finally {
+        select.disabled = false;
+      }
+    });
+  });
+}
+
+/* ==================================================================================
+ * INICIO
+ * ================================================================================ */
+async function init() {
+  if (!isConfigured()) {
+    document.getElementById('app').innerHTML = `
+      <div class="min-h-screen flex items-center justify-center px-4">
+        <div class="max-w-sm bg-amber-50 border border-amber-200 rounded-2xl p-6 text-sm text-amber-800">
+          <p class="font-semibold mb-1">⚠️ Falta configurar el backend</p>
+          <p>Define <code class="bg-amber-100 px-1 rounded">GOOGLE_SCRIPT_URL</code> en <code class="bg-amber-100 px-1 rounded">admin.html</code>.</p>
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  const savedSecret = sessionStorage.getItem(SESSION_KEY);
+  if (savedSecret) {
+    const result = await apiList(savedSecret);
+    if (result.ok) {
+      renderDashboard(result.data, savedSecret);
+      return;
+    }
+    sessionStorage.removeItem(SESSION_KEY);
+  }
+  renderLogin();
+}
+
+window.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
