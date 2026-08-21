@@ -74,6 +74,17 @@ const COUNTRY_CODES = [
   { code: '505',label: '🇳🇮 +505 Nicaragua' },
 ];
 
+// Paquetes disponibles. Ajusta precios/nombres aquí si cambian.
+const PAQUETES = [
+  { id: 'individual', nombre: 'Kit individual', precio: 89, detalle: '1 sticker QR + chip NFC configurado' },
+  { id: 'triple', nombre: 'Paquete de 3', precio: 199, detalle: '3 stickers QR + 3 chips NFC configurados' },
+];
+
+const METODOS_PAGO = [
+  { id: 'efectivo', nombre: 'Efectivo', detalle: 'Pagas en efectivo cuando te entreguemos tu kit.' },
+  { id: 'transferencia', nombre: 'Transferencia o tarjeta', detalle: 'Te compartimos los datos de pago por WhatsApp para completar tu transferencia.' },
+];
+
 /* ==================================================================================
  * CAPA DE DATOS: llamadas al backend de Google Apps Script (usa Google Sheets como DB)
  * ==================================================================================
@@ -119,6 +130,10 @@ function onlyDigits(str) {
 
 function isConfigured() {
   return GOOGLE_SCRIPT_URL && GOOGLE_SCRIPT_URL.startsWith('http');
+}
+
+function fmtMoney(n) {
+  return `$${n} MXN`;
 }
 
 /* ==================================================================================
@@ -184,6 +199,35 @@ function renderRegistro() {
       <form id="registro-form" class="space-y-4" novalidate>
 
         <div>
+          <label class="block text-sm font-medium text-slate-700 mb-2">Elige tu paquete</label>
+          <div class="grid grid-cols-2 gap-3">
+            ${PAQUETES.map((p, i) => `
+              <label class="paquete-option cursor-pointer rounded-xl border-2 border-slate-200 p-3 text-center hover:border-brand-300 transition">
+                <input type="radio" name="paquete" value="${p.id}" class="sr-only" ${i === 0 ? 'checked' : ''} />
+                <p class="text-sm font-bold text-slate-900">${escapeHtml(p.nombre)}</p>
+                <p class="text-lg font-extrabold text-brand-600 mt-0.5">${fmtMoney(p.precio)}</p>
+                <p class="text-[11px] text-slate-500 mt-1 leading-tight">${escapeHtml(p.detalle)}</p>
+              </label>
+            `).join('')}
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-2">Método de pago</label>
+          <div class="space-y-2">
+            ${METODOS_PAGO.map((m, i) => `
+              <label class="metodo-option cursor-pointer flex items-start gap-2 rounded-xl border-2 border-slate-200 p-3 hover:border-brand-300 transition">
+                <input type="radio" name="metodoPago" value="${m.id}" class="mt-0.5" ${i === 0 ? 'checked' : ''} />
+                <span>
+                  <span class="block text-sm font-semibold text-slate-800">${escapeHtml(m.nombre)}</span>
+                  <span class="block text-xs text-slate-500">${escapeHtml(m.detalle)}</span>
+                </span>
+              </label>
+            `).join('')}
+          </div>
+        </div>
+
+        <div>
           <label class="block text-sm font-medium text-slate-700 mb-1">Nombre completo</label>
           <input id="f-nombre" type="text" required placeholder="Ej. Ana Gómez"
             class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent" />
@@ -235,6 +279,21 @@ function renderRegistro() {
     </div>
   `);
 
+  // Resalta visualmente la tarjeta de paquete / método de pago seleccionado
+  const highlightSelection = (name, activeClass) => {
+    const inputs = document.querySelectorAll(`input[name="${name}"]`);
+    const update = () => {
+      inputs.forEach(input => {
+        input.closest('label').classList.toggle('border-brand-500', input.checked);
+        input.closest('label').classList.toggle('bg-brand-50', input.checked);
+      });
+    };
+    inputs.forEach(input => input.addEventListener('change', update));
+    update();
+  };
+  highlightSelection('paquete');
+  highlightSelection('metodoPago');
+
   document.getElementById('registro-form').addEventListener('submit', async (e) => {
     e.preventDefault();
 
@@ -245,6 +304,10 @@ function renderRegistro() {
     const telefonoLocal = onlyDigits(document.getElementById('f-telefono').value);
     const correo = document.getElementById('f-correo').value.trim();
     const recompensa = document.getElementById('f-recompensa').value.trim();
+    const paqueteId = document.querySelector('input[name="paquete"]:checked').value;
+    const metodoPagoId = document.querySelector('input[name="metodoPago"]:checked').value;
+    const paquete = PAQUETES.find(p => p.id === paqueteId);
+    const metodoPago = METODOS_PAGO.find(m => m.id === metodoPagoId);
 
     const errorEl = document.getElementById('form-error');
     errorEl.classList.add('hidden');
@@ -269,9 +332,15 @@ function renderRegistro() {
         nombre, carrera, centro,
         telefono: `${countryCode}${telefonoLocal}`,
         correo, recompensa,
+        paquete: paquete.nombre,
+        metodoPago: metodoPago.nombre,
       });
 
       if (!result.ok) throw new Error(result.error || 'Error desconocido');
+
+      const pagoMsg = metodoPago.id === 'efectivo'
+        ? `Pagarás <strong>${fmtMoney(paquete.precio)}</strong> en efectivo cuando te entreguemos tu kit.`
+        : `Te enviaremos los datos de pago por WhatsApp para completar tu transferencia de <strong>${fmtMoney(paquete.precio)}</strong>.`;
 
       renderShell(`
         <div class="bg-white rounded-2xl shadow-xl shadow-slate-200/60 border border-slate-100 p-6 sm:p-8 text-center">
@@ -279,8 +348,9 @@ function renderRegistro() {
             ${ICONS.check} ¡Solicitud recibida!
           </div>
           <h1 class="text-xl font-bold text-slate-900">Gracias, ${escapeHtml(nombre)}</h1>
-          <p class="text-sm text-slate-500 mt-2">Tu código de referencia es <span class="font-mono font-semibold text-slate-700">${escapeHtml(result.id)}</span>.</p>
-          <p class="text-sm text-slate-500 mt-3">Nos pondremos en contacto por WhatsApp para coordinar el pago y la entrega de tu sticker QR + chip NFC.</p>
+          <p class="text-sm text-slate-500 mt-2">Tu código de referencia es <span class="font-mono font-semibold text-slate-700">${escapeHtml(result.id)}</span> · ${escapeHtml(paquete.nombre)}.</p>
+          <p class="text-sm text-slate-500 mt-3">${pagoMsg}</p>
+          <p class="text-sm text-slate-500 mt-3">Nos pondremos en contacto por WhatsApp para coordinar la entrega de tu sticker QR + chip NFC.</p>
         </div>
       `);
     } catch (err) {

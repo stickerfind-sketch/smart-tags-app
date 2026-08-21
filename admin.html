@@ -231,6 +231,7 @@ function renderCards(records, secret) {
         <p>📱 ${escapeHtml(r.Telefono)}</p>
         <p>✉️ ${escapeHtml(r.Correo)}</p>
         ${r.Recompensa ? `<p>🎁 ${escapeHtml(r.Recompensa)}</p>` : ''}
+        ${r.Paquete ? `<p>📦 ${escapeHtml(r.Paquete)}${r.MetodoPago ? ' · 💳 ' + escapeHtml(r.MetodoPago) : ''}</p>` : ''}
         <p>📅 ${fmtDate(r.FechaRegistro)}</p>
         ${r.Recuperado === 'Sí' ? `<p class="text-emerald-600 font-medium">${ICONS.check} Objeto recuperado</p>` : ''}
       </div>
