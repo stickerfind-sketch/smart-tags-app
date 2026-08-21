@@ -35,6 +35,35 @@
   details > summary { list-style: none; }
   details > summary::-webkit-details-marker { display: none; }
   details[open] .chev { transform: rotate(180deg); }
+  details > summary + * { animation: faqOpen .3s ease-out; }
+  @keyframes faqOpen { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+
+  /* Entrada del hero al cargar la página */
+  @keyframes fadeInUp { from { opacity: 0; transform: translateY(22px); } to { opacity: 1; transform: none; } }
+  .hero-in { animation: fadeInUp .7s cubic-bezier(.16,1,.3,1) both; }
+
+  /* Flotación suave de los círculos del hero */
+  @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+  .float { animation: float 4.5s ease-in-out infinite; }
+  .float-slow { animation: float 5.5s ease-in-out infinite; animation-delay: .6s; }
+
+  /* Revelado al hacer scroll (activado por IntersectionObserver) */
+  .reveal { opacity: 0; transform: translateY(28px); transition: opacity .7s cubic-bezier(.16,1,.3,1), transform .7s cubic-bezier(.16,1,.3,1); }
+  .reveal.is-visible { opacity: 1; transform: none; }
+  .reveal-delay-1.is-visible { transition-delay: .06s; }
+  .reveal-delay-2.is-visible { transition-delay: .12s; }
+  .reveal-delay-3.is-visible { transition-delay: .18s; }
+  .reveal-delay-4.is-visible { transition-delay: .24s; }
+  .reveal-delay-5.is-visible { transition-delay: .3s; }
+  .reveal-delay-6.is-visible { transition-delay: .36s; }
+
+  /* Header con sombra sutil al hacer scroll */
+  header { transition: box-shadow .3s ease, background-color .3s ease; }
+  header.is-scrolled { box-shadow: 0 1px 3px rgba(15,23,42,.08); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .reveal, .hero-in, .float, .float-slow, .badge-pop { animation: none !important; transition: none !important; opacity: 1 !important; transform: none !important; }
+  }
 </style>
 </head>
 <body class="bg-white text-slate-800 antialiased">
@@ -88,7 +117,7 @@
 <!-- ============================================================= HERO ============================================================= -->
 <section class="relative overflow-hidden bg-gradient-to-b from-brand-50 via-white to-white">
   <div class="max-w-6xl mx-auto px-4 sm:px-6 pt-14 pb-20 sm:pt-20 sm:pb-28 grid lg:grid-cols-2 gap-12 items-center">
-    <div>
+    <div class="hero-in">
       <div class="inline-flex items-center gap-2 bg-white border border-brand-100 shadow-sm text-brand-700 text-xs font-semibold px-3 py-1.5 rounded-full mb-5">
         📡 Stickers inteligentes NFC + QR
       </div>
@@ -96,7 +125,7 @@
         Que tus cosas <span class="text-brand-600">regresen solas.</span>
       </h1>
       <p class="mt-5 text-lg text-slate-600 max-w-lg">
-        Pega un sticker inteligente a tu mochila, laptop o calculadora. Si se te pierde, quien la encuentre solo escanea el QR o acerca su celular — y te contacta directo, sin instalar nada.
+        Pega un sticker inteligente a tu cargador, laptop o calculadora. Si se te pierde, quien la encuentre solo escanea el QR o acerca su celular — y te contacta directo, sin instalar nada.
       </p>
       <div class="mt-8 flex flex-col sm:flex-row gap-3">
         <a href="registro.html" class="text-center bg-brand-600 hover:bg-brand-700 active:scale-[0.98] transition text-white font-semibold px-6 py-3.5 rounded-xl shadow-lg shadow-brand-600/25">
@@ -114,23 +143,23 @@
     </div>
 
     <!-- Ilustración hero: mochila con QR + laptop con NFC, superpuestos -->
-    <div class="relative h-72 sm:h-96 flex items-center justify-center">
+    <div class="relative h-72 sm:h-96 flex items-center justify-center hero-in" style="animation-delay:.15s">
       <div class="absolute w-72 h-72 sm:w-96 sm:h-96 bg-brand-100 rounded-full blur-3xl opacity-60"></div>
       <div class="relative flex items-end gap-6">
-        <div class="relative">
+        <div class="relative float">
           <svg viewBox="0 0 120 120" class="w-36 sm:w-44 drop-shadow-xl">
             <circle cx="60" cy="60" r="58" fill="#ffffff"/>
             <circle cx="60" cy="60" r="58" fill="none" stroke="#e0e7ff" stroke-width="2"/>
-            <!-- mochila -->
-            <path d="M40 50 q0 -18 20 -18 q20 0 20 18 v34 q0 8 -8 8 H48 q-8 0 -8 -8 Z" fill="#e0e7ff" stroke="#4f46e5" stroke-width="2.5" stroke-linejoin="round"/>
-            <path d="M48 32 q12 -8 24 0" fill="none" stroke="#4f46e5" stroke-width="2.5" stroke-linecap="round"/>
-            <rect x="50" y="58" width="20" height="16" rx="3" fill="#ffffff" stroke="#4f46e5" stroke-width="2"/>
-            <line x1="46" y1="46" x2="46" y2="80" stroke="#4f46e5" stroke-width="2" stroke-linecap="round"/>
-            <line x1="74" y1="46" x2="74" y2="80" stroke="#4f46e5" stroke-width="2" stroke-linecap="round"/>
+            <!-- cargador de celular -->
+            <rect x="42" y="28" width="30" height="24" rx="6" fill="#e0e7ff" stroke="#4f46e5" stroke-width="2.5"/>
+            <line x1="50" y1="28" x2="50" y2="18" stroke="#4f46e5" stroke-width="2.5" stroke-linecap="round"/>
+            <line x1="64" y1="28" x2="64" y2="18" stroke="#4f46e5" stroke-width="2.5" stroke-linecap="round"/>
+            <path d="M57 52 q0 18 18 18 q10 0 10 12" fill="none" stroke="#4f46e5" stroke-width="2.5" stroke-linecap="round"/>
+            <rect x="78" y="80" width="13" height="18" rx="3" fill="#ffffff" stroke="#4f46e5" stroke-width="2.2"/>
           </svg>
           <svg viewBox="0 0 32 32" class="absolute -bottom-2 -right-2 w-9 sm:w-11 badge-pop" style="animation-delay:.1s"><use href="#badge-qr"/></svg>
         </div>
-        <div class="relative -mb-4">
+        <div class="relative -mb-4 float-slow">
           <svg viewBox="0 0 120 120" class="w-32 sm:w-40 drop-shadow-xl">
             <circle cx="60" cy="60" r="58" fill="#ffffff"/>
             <circle cx="60" cy="60" r="58" fill="none" stroke="#e0e7ff" stroke-width="2"/>
@@ -149,27 +178,27 @@
 <!-- ============================================================= CÓMO FUNCIONA ============================================================= -->
 <section id="como-funciona" class="py-20 sm:py-28 border-t border-slate-100">
   <div class="max-w-6xl mx-auto px-4 sm:px-6">
-    <div class="text-center max-w-2xl mx-auto mb-14">
+    <div class="text-center max-w-2xl mx-auto mb-14 reveal">
       <p class="text-brand-600 font-semibold text-sm mb-2">CÓMO FUNCIONA</p>
       <h2 class="text-3xl sm:text-4xl font-extrabold text-slate-900">De perdido a recuperado en 4 pasos</h2>
     </div>
     <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-      <div class="text-center">
+      <div class="text-center reveal reveal-delay-1">
         <div class="w-14 h-14 mx-auto rounded-2xl bg-brand-600 text-white font-extrabold text-lg flex items-center justify-center mb-4">1</div>
         <h3 class="font-bold text-slate-900 mb-1">Elige tu paquete</h3>
         <p class="text-sm text-slate-500">Regístrate en 2 minutos y elige cuántos objetos quieres proteger.</p>
       </div>
-      <div class="text-center">
+      <div class="text-center reveal reveal-delay-2">
         <div class="w-14 h-14 mx-auto rounded-2xl bg-brand-600 text-white font-extrabold text-lg flex items-center justify-center mb-4">2</div>
         <h3 class="font-bold text-slate-900 mb-1">Te lo entregamos</h3>
         <p class="text-sm text-slate-500">Te damos tu sticker QR y tu chip NFC ya configurados con tus datos.</p>
       </div>
-      <div class="text-center">
+      <div class="text-center reveal reveal-delay-3">
         <div class="w-14 h-14 mx-auto rounded-2xl bg-brand-600 text-white font-extrabold text-lg flex items-center justify-center mb-4">3</div>
         <h3 class="font-bold text-slate-900 mb-1">Lo pegas donde quieras</h3>
-        <p class="text-sm text-slate-500">Mochila, laptop, calculadora, termo... lo que más se te pierda.</p>
+        <p class="text-sm text-slate-500">Cargador, laptop, calculadora, termo... lo que más se te pierda.</p>
       </div>
-      <div class="text-center">
+      <div class="text-center reveal reveal-delay-4">
         <div class="w-14 h-14 mx-auto rounded-2xl bg-brand-600 text-white font-extrabold text-lg flex items-center justify-center mb-4">4</div>
         <h3 class="font-bold text-slate-900 mb-1">Si se pierde, te contactan</h3>
         <p class="text-sm text-slate-500">Quien lo encuentre escanea o acerca su celular y te escribe directo.</p>
@@ -181,7 +210,7 @@
 <!-- ============================================================= GALERÍA DE OBJETOS ============================================================= -->
 <section id="objetos" class="py-20 sm:py-28 bg-slate-50 border-t border-slate-100">
   <div class="max-w-6xl mx-auto px-4 sm:px-6">
-    <div class="text-center max-w-2xl mx-auto mb-14">
+    <div class="text-center max-w-2xl mx-auto mb-14 reveal">
       <p class="text-brand-600 font-semibold text-sm mb-2">FUNCIONA EN LO QUE TÚ DECIDAS</p>
       <h2 class="text-3xl sm:text-4xl font-extrabold text-slate-900">Un sticker QR o un chip NFC, tú eliges</h2>
       <p class="mt-3 text-slate-500">Los mismos objetos de siempre, ahora con una forma de regresar a casa.</p>
@@ -189,25 +218,25 @@
 
     <div class="grid grid-cols-2 sm:grid-cols-3 gap-5 sm:gap-6">
 
-      <!-- Mochila · QR -->
-      <div class="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 text-center hover:shadow-lg hover:-translate-y-0.5 transition">
+      <!-- Cargador · QR -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 text-center hover:shadow-lg hover:-translate-y-0.5 transition reveal reveal-delay-1">
         <div class="relative inline-block mb-3">
           <svg viewBox="0 0 120 120" class="w-20 sm:w-24">
             <circle cx="60" cy="60" r="58" fill="#eef2ff"/>
-            <path d="M40 50 q0 -18 20 -18 q20 0 20 18 v34 q0 8 -8 8 H48 q-8 0 -8 -8 Z" fill="#ffffff" stroke="#4f46e5" stroke-width="2.5" stroke-linejoin="round"/>
-            <path d="M48 32 q12 -8 24 0" fill="none" stroke="#4f46e5" stroke-width="2.5" stroke-linecap="round"/>
-            <rect x="50" y="58" width="20" height="16" rx="3" fill="#e0e7ff" stroke="#4f46e5" stroke-width="2"/>
-            <line x1="46" y1="46" x2="46" y2="80" stroke="#4f46e5" stroke-width="2" stroke-linecap="round"/>
-            <line x1="74" y1="46" x2="74" y2="80" stroke="#4f46e5" stroke-width="2" stroke-linecap="round"/>
+            <rect x="42" y="28" width="30" height="24" rx="6" fill="#ffffff" stroke="#4f46e5" stroke-width="2.5"/>
+            <line x1="50" y1="28" x2="50" y2="18" stroke="#4f46e5" stroke-width="2.5" stroke-linecap="round"/>
+            <line x1="64" y1="28" x2="64" y2="18" stroke="#4f46e5" stroke-width="2.5" stroke-linecap="round"/>
+            <path d="M57 52 q0 18 18 18 q10 0 10 12" fill="none" stroke="#4f46e5" stroke-width="2.5" stroke-linecap="round"/>
+            <rect x="78" y="80" width="13" height="18" rx="3" fill="#e0e7ff" stroke="#4f46e5" stroke-width="2"/>
           </svg>
           <svg viewBox="0 0 32 32" class="absolute -bottom-1 -right-1 w-8"><use href="#badge-qr"/></svg>
         </div>
-        <p class="font-semibold text-slate-800 text-sm">Mochila</p>
+        <p class="font-semibold text-slate-800 text-sm">Cargador</p>
         <p class="text-xs text-slate-400">Sticker QR</p>
       </div>
 
       <!-- Laptop · NFC -->
-      <div class="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 text-center hover:shadow-lg hover:-translate-y-0.5 transition">
+      <div class="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 text-center hover:shadow-lg hover:-translate-y-0.5 transition reveal reveal-delay-2">
         <div class="relative inline-block mb-3">
           <svg viewBox="0 0 120 120" class="w-20 sm:w-24">
             <circle cx="60" cy="60" r="58" fill="#eef2ff"/>
@@ -222,7 +251,7 @@
       </div>
 
       <!-- Calculadora · QR -->
-      <div class="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 text-center hover:shadow-lg hover:-translate-y-0.5 transition">
+      <div class="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 text-center hover:shadow-lg hover:-translate-y-0.5 transition reveal reveal-delay-3">
         <div class="relative inline-block mb-3">
           <svg viewBox="0 0 120 120" class="w-20 sm:w-24">
             <circle cx="60" cy="60" r="58" fill="#eef2ff"/>
@@ -247,7 +276,7 @@
       </div>
 
       <!-- Termo · NFC -->
-      <div class="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 text-center hover:shadow-lg hover:-translate-y-0.5 transition">
+      <div class="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 text-center hover:shadow-lg hover:-translate-y-0.5 transition reveal reveal-delay-4">
         <div class="relative inline-block mb-3">
           <svg viewBox="0 0 120 120" class="w-20 sm:w-24">
             <circle cx="60" cy="60" r="58" fill="#eef2ff"/>
@@ -262,7 +291,7 @@
       </div>
 
       <!-- Llaves · QR -->
-      <div class="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 text-center hover:shadow-lg hover:-translate-y-0.5 transition">
+      <div class="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 text-center hover:shadow-lg hover:-translate-y-0.5 transition reveal reveal-delay-5">
         <div class="relative inline-block mb-3">
           <svg viewBox="0 0 120 120" class="w-20 sm:w-24">
             <circle cx="60" cy="60" r="58" fill="#eef2ff"/>
@@ -280,7 +309,7 @@
       </div>
 
       <!-- Audífonos · NFC -->
-      <div class="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 text-center hover:shadow-lg hover:-translate-y-0.5 transition">
+      <div class="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 text-center hover:shadow-lg hover:-translate-y-0.5 transition reveal reveal-delay-6">
         <div class="relative inline-block mb-3">
           <svg viewBox="0 0 120 120" class="w-20 sm:w-24">
             <circle cx="60" cy="60" r="58" fill="#eef2ff"/>
@@ -303,21 +332,21 @@
 <!-- ============================================================= BENEFICIOS ============================================================= -->
 <section class="py-20 sm:py-28">
   <div class="max-w-6xl mx-auto px-4 sm:px-6 grid sm:grid-cols-3 gap-8 sm:gap-10">
-    <div>
+    <div class="reveal reveal-delay-1">
       <div class="w-12 h-12 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center mb-4">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
       </div>
       <h3 class="font-bold text-slate-900 mb-2">Sin apps ni fricción</h3>
       <p class="text-sm text-slate-500">Cualquier cámara escanea el QR. Cualquier celular moderno activa el NFC con solo acercarlo. Nadie necesita instalar nada.</p>
     </div>
-    <div>
+    <div class="reveal reveal-delay-2">
       <div class="w-12 h-12 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center mb-4">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-12V7a4 4 0 00-8 0v4h8z"/></svg>
       </div>
       <h3 class="font-bold text-slate-900 mb-2">Tu privacidad, tu control</h3>
       <p class="text-sm text-slate-500">Solo compartimos lo necesario para que te contacten. Tú decides cuándo marcar tu objeto como recuperado.</p>
     </div>
-    <div>
+    <div class="reveal reveal-delay-3">
       <div class="w-12 h-12 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center mb-4">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.42A12.02 12.02 0 0122 9v6a12.02 12.02 0 01-1.84 6.42L12 14zm0 0L5.84 10.58A12.02 12.02 0 002 9v6a12.02 12.02 0 001.84 6.42L12 14z"/></svg>
       </div>
@@ -330,13 +359,13 @@
 <!-- ============================================================= PAQUETES ============================================================= -->
 <section id="paquetes" class="py-20 sm:py-28 bg-slate-50 border-t border-slate-100">
   <div class="max-w-6xl mx-auto px-4 sm:px-6">
-    <div class="text-center max-w-2xl mx-auto mb-14">
+    <div class="text-center max-w-2xl mx-auto mb-14 reveal">
       <p class="text-brand-600 font-semibold text-sm mb-2">PAQUETES</p>
       <h2 class="text-3xl sm:text-4xl font-extrabold text-slate-900">Protege uno o protégelos todos</h2>
     </div>
 
     <div class="grid sm:grid-cols-2 gap-6 max-w-3xl mx-auto">
-      <div class="bg-white rounded-2xl border border-slate-200 p-8">
+      <div class="bg-white rounded-2xl border border-slate-200 p-8 reveal reveal-delay-1 hover:shadow-lg hover:-translate-y-0.5 transition">
         <p class="font-bold text-slate-900">Kit individual</p>
         <p class="text-4xl font-extrabold text-slate-900 mt-3">$89 <span class="text-base font-medium text-slate-400">MXN</span></p>
         <ul class="mt-5 space-y-2 text-sm text-slate-600">
@@ -346,7 +375,7 @@
         </ul>
         <a href="registro.html" class="mt-6 block text-center bg-slate-900 hover:bg-black transition text-white font-semibold py-3 rounded-xl">Elegir este</a>
       </div>
-      <div class="bg-brand-600 rounded-2xl p-8 text-white relative overflow-hidden">
+      <div class="bg-brand-600 rounded-2xl p-8 text-white relative overflow-hidden reveal reveal-delay-2 hover:shadow-xl hover:-translate-y-0.5 transition">
         <div class="absolute top-4 right-4 bg-white/15 text-xs font-semibold px-2.5 py-1 rounded-full">Más popular</div>
         <p class="font-bold">Paquete de 3</p>
         <p class="text-4xl font-extrabold mt-3">$199 <span class="text-base font-medium text-brand-100">MXN</span></p>
@@ -364,13 +393,13 @@
 <!-- ============================================================= PREGUNTAS FRECUENTES ============================================================= -->
 <section id="preguntas" class="py-20 sm:py-28">
   <div class="max-w-3xl mx-auto px-4 sm:px-6">
-    <div class="text-center mb-12">
+    <div class="text-center mb-12 reveal">
       <p class="text-brand-600 font-semibold text-sm mb-2">PREGUNTAS FRECUENTES</p>
       <h2 class="text-3xl sm:text-4xl font-extrabold text-slate-900">Lo que más nos preguntan</h2>
     </div>
 
     <div class="space-y-3">
-      <details class="group bg-slate-50 rounded-2xl px-5 py-4 open:bg-white open:shadow-md open:border open:border-slate-200">
+      <details class="group bg-slate-50 rounded-2xl px-5 py-4 open:bg-white open:shadow-md open:border open:border-slate-200 reveal reveal-delay-1">
         <summary class="flex items-center justify-between cursor-pointer font-semibold text-slate-800">
           ¿Qué pasa si pierdo mi sticker o mi chip?
           <svg class="chev w-4 h-4 text-slate-400 transition-transform" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 9l6 6 6-6"/></svg>
@@ -378,7 +407,7 @@
         <p class="mt-3 text-sm text-slate-500">Contáctanos y te ayudamos a desactivar el código anterior y conseguir uno nuevo.</p>
       </details>
 
-      <details class="group bg-slate-50 rounded-2xl px-5 py-4 open:bg-white open:shadow-md open:border open:border-slate-200">
+      <details class="group bg-slate-50 rounded-2xl px-5 py-4 open:bg-white open:shadow-md open:border open:border-slate-200 reveal reveal-delay-2">
         <summary class="flex items-center justify-between cursor-pointer font-semibold text-slate-800">
           ¿Mis datos personales quedan públicos?
           <svg class="chev w-4 h-4 text-slate-400 transition-transform" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 9l6 6 6-6"/></svg>
@@ -386,7 +415,7 @@
         <p class="mt-3 text-sm text-slate-500">Solo se muestra tu nombre, carrera y la forma de contactarte (WhatsApp o correo) a quien escanee tu código — lo mínimo necesario para que te devuelvan tu objeto.</p>
       </details>
 
-      <details class="group bg-slate-50 rounded-2xl px-5 py-4 open:bg-white open:shadow-md open:border open:border-slate-200">
+      <details class="group bg-slate-50 rounded-2xl px-5 py-4 open:bg-white open:shadow-md open:border open:border-slate-200 reveal reveal-delay-3">
         <summary class="flex items-center justify-between cursor-pointer font-semibold text-slate-800">
           ¿Funciona en cualquier celular?
           <svg class="chev w-4 h-4 text-slate-400 transition-transform" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 9l6 6 6-6"/></svg>
@@ -394,7 +423,7 @@
         <p class="mt-3 text-sm text-slate-500">El QR funciona con la cámara de cualquier smartphone. El NFC funciona con la mayoría de celulares Android y iPhone (7 en adelante) con solo acercarlos, sin apps.</p>
       </details>
 
-      <details class="group bg-slate-50 rounded-2xl px-5 py-4 open:bg-white open:shadow-md open:border open:border-slate-200">
+      <details class="group bg-slate-50 rounded-2xl px-5 py-4 open:bg-white open:shadow-md open:border open:border-slate-200 reveal reveal-delay-4">
         <summary class="flex items-center justify-between cursor-pointer font-semibold text-slate-800">
           ¿Cómo pago y cuándo recibo mi kit?
           <svg class="chev w-4 h-4 text-slate-400 transition-transform" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 9l6 6 6-6"/></svg>
@@ -407,7 +436,7 @@
 
 <!-- ============================================================= CTA FINAL ============================================================= -->
 <section class="py-16 sm:py-20 bg-brand-600">
-  <div class="max-w-3xl mx-auto px-4 sm:px-6 text-center">
+  <div class="max-w-3xl mx-auto px-4 sm:px-6 text-center reveal">
     <h2 class="text-2xl sm:text-3xl font-extrabold text-white">¿Listo para dejar de perder tus cosas?</h2>
     <p class="mt-3 text-brand-100">Regístrate en 2 minutos y te contactamos para entregarte tu kit.</p>
     <a href="registro.html" class="mt-7 inline-block bg-white hover:bg-brand-50 active:scale-[0.98] transition text-brand-700 font-semibold px-8 py-3.5 rounded-xl shadow-lg">
@@ -426,6 +455,26 @@
     </div>
   </div>
 </footer>
+
+<script>
+  // Revela las secciones con la clase .reveal a medida que entran en pantalla
+  const revealObserver = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('is-visible');
+        revealObserver.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
+
+  document.querySelectorAll('.reveal').forEach((el) => revealObserver.observe(el));
+
+  // Sombra sutil en el header al hacer scroll
+  const header = document.querySelector('header');
+  const onScroll = () => header.classList.toggle('is-scrolled', window.scrollY > 8);
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+</script>
 
 </body>
 </html>
