@@ -20,7 +20,7 @@
             800: '#3730a3', 900: '#312e81'
           }
         },
-        fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'] }
+        fontFamily: { sans: ['-apple-system', 'BlinkMacSystemFont', 'Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'] }
       }
     }
   }
@@ -28,32 +28,16 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<style>
-  body { font-family: 'Inter', ui-sans-serif, system-ui, sans-serif; }
-  .fade-in { animation: fadeIn .5s cubic-bezier(.16,1,.3,1) both; }
-  @keyframes fadeIn { from { opacity:0; transform: translateY(14px);} to { opacity:1; transform: translateY(0);} }
-  .spin { animation: spin 0.8s linear infinite; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .pop-in { animation: popIn .45s cubic-bezier(.34,1.56,.64,1) both; }
-  @keyframes popIn { from { opacity:0; transform: scale(.85);} to { opacity:1; transform: scale(1);} }
-  input, select, textarea, button { transition: border-color .15s ease, box-shadow .15s ease, background-color .15s ease, transform .1s ease; }
-  .stagger > * { opacity: 0; animation: fadeIn .5s cubic-bezier(.16,1,.3,1) both; }
-  .stagger > *:nth-child(1) { animation-delay: .03s; }
-  .stagger > *:nth-child(2) { animation-delay: .06s; }
-  .stagger > *:nth-child(3) { animation-delay: .09s; }
-  .stagger > *:nth-child(4) { animation-delay: .12s; }
-  .stagger > *:nth-child(5) { animation-delay: .15s; }
-  .stagger > *:nth-child(6) { animation-delay: .18s; }
-  .stagger > *:nth-child(7) { animation-delay: .21s; }
-  .stagger > *:nth-child(8) { animation-delay: .24s; }
-  .stagger > *:nth-child(9) { animation-delay: .27s; }
-  .stagger > *:nth-child(10) { animation-delay: .3s; }
-  @media (prefers-reduced-motion: reduce) {
-    .fade-in, .pop-in, .stagger > *, .spin { animation: none !important; opacity: 1 !important; transform: none !important; }
-  }
-</style>
+<!-- Estilos compartidos "Liquid Glass" (fondos ambientales, vidrio, animaciones) usados por las 3 páginas -->
+<link href="styles.css" rel="stylesheet">
 </head>
-<body class="min-h-screen bg-gradient-to-b from-brand-50 via-white to-white text-slate-800">
+<body class="min-h-screen text-slate-800">
+
+<!-- Fondo ambiental con manchas de color a la deriva -->
+<div class="ambient-bg">
+  <div class="ambient-blob" style="width:30rem;height:30rem;top:-8rem;left:-8rem;background:#a5b4fc;"></div>
+  <div class="ambient-blob" style="width:24rem;height:24rem;bottom:-6rem;right:-8rem;background:#c4b5fd;animation-delay:-8s;"></div>
+</div>
 
 <div id="app" class="min-h-screen flex flex-col"></div>
 
@@ -173,16 +157,16 @@ function spinner() {
  * ================================================================================ */
 function renderShell(innerHtml) {
   document.getElementById('app').innerHTML = `
-    <header class="w-full py-5 px-4 flex items-center justify-center gap-2 border-b border-slate-100 bg-white/70 backdrop-blur">
+    <header class="w-full py-5 px-4 flex items-center justify-center gap-2 glass">
       <a href="index.html" class="flex items-center gap-2">
-        <div class="w-9 h-9 rounded-xl bg-brand-600 text-white flex items-center justify-center shadow-md shadow-brand-200">
+        <div class="w-9 h-9 rounded-xl bg-brand-600 text-white flex items-center justify-center shadow-md shadow-brand-600/30">
           ${ICONS.tag}
         </div>
         <span class="text-lg font-extrabold tracking-tight text-slate-800">Sticker<span class="text-brand-600">Find</span></span>
       </a>
     </header>
     <main class="flex-1 w-full flex items-start sm:items-center justify-center px-4 py-6 sm:py-10">
-      <div class="w-full max-w-md fade-in">
+      <div class="w-full max-w-md hero-in">
         ${innerHtml}
       </div>
     </main>
@@ -211,17 +195,17 @@ function renderRegistro() {
   }
 
   renderShell(`
-    <div class="bg-white rounded-2xl shadow-xl shadow-slate-200/60 border border-slate-100 p-6 sm:p-8">
+    <div class="glass-strong rounded-[28px] p-6 sm:p-8">
       <h1 class="text-xl font-bold text-slate-900">Protege tus objetos</h1>
       <p class="text-sm text-slate-500 mt-1 mb-6">Deja tus datos y nos pondremos en contacto contigo para entregarte tu sticker QR + chip NFC.</p>
 
-      <form id="registro-form" class="space-y-4 stagger" novalidate>
+      <form id="registro-form" class="space-y-4" novalidate>
 
         <div>
           <label class="block text-sm font-medium text-slate-700 mb-2">Elige tu paquete</label>
           <div class="grid grid-cols-2 gap-3">
             ${PAQUETES.map((p, i) => `
-              <label class="paquete-option cursor-pointer rounded-xl border-2 border-slate-200 p-3 text-center hover:border-brand-300 transition">
+              <label class="paquete-option cursor-pointer rounded-2xl border-2 border-white/60 bg-white/40 p-3 text-center hover:border-brand-300 transition">
                 <input type="radio" name="paquete" value="${p.id}" class="sr-only" ${i === 0 ? 'checked' : ''} />
                 <p class="text-sm font-bold text-slate-900">${escapeHtml(p.nombre)}</p>
                 <p class="text-lg font-extrabold text-brand-600 mt-0.5">${fmtMoney(p.precio)}</p>
@@ -235,7 +219,7 @@ function renderRegistro() {
           <label class="block text-sm font-medium text-slate-700 mb-2">Método de pago</label>
           <div class="space-y-2">
             ${METODOS_PAGO.map((m, i) => `
-              <label class="metodo-option cursor-pointer flex items-start gap-2 rounded-xl border-2 border-slate-200 p-3 hover:border-brand-300 transition">
+              <label class="metodo-option cursor-pointer flex items-start gap-2 rounded-2xl border-2 border-white/60 bg-white/40 p-3 hover:border-brand-300 transition">
                 <input type="radio" name="metodoPago" value="${m.id}" class="mt-0.5" ${i === 0 ? 'checked' : ''} />
                 <span>
                   <span class="block text-sm font-semibold text-slate-800">${escapeHtml(m.nombre)}</span>
@@ -249,49 +233,49 @@ function renderRegistro() {
         <div>
           <label class="block text-sm font-medium text-slate-700 mb-1">Nombre completo</label>
           <input id="f-nombre" type="text" required placeholder="Ej. Ana Gómez"
-            class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent" />
+            class="w-full rounded-xl border border-white/60 bg-white/50 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent" />
         </div>
 
         <div>
           <label class="block text-sm font-medium text-slate-700 mb-1">Carrera</label>
           <input id="f-carrera" type="text" required placeholder="Ej. Ing. en Sistemas Computacionales"
-            class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent" />
+            class="w-full rounded-xl border border-white/60 bg-white/50 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent" />
         </div>
 
         <div>
           <label class="block text-sm font-medium text-slate-700 mb-1">Centro universitario</label>
           <input id="f-centro" type="text" required placeholder="Ej. Campus Central"
-            class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent" />
+            class="w-full rounded-xl border border-white/60 bg-white/50 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent" />
         </div>
 
         <div>
           <label class="block text-sm font-medium text-slate-700 mb-1">Número de WhatsApp</label>
           <div class="flex gap-2">
-            <select id="f-country" class="rounded-xl border border-slate-300 px-2 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-500">
+            <select id="f-country" class="rounded-xl border border-white/60 bg-white/50 px-2 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
               ${COUNTRY_CODES.map(c => `<option value="${c.code}" ${c.code === '52' ? 'selected' : ''}>${c.label}</option>`).join('')}
             </select>
             <input id="f-telefono" type="tel" required placeholder="10 dígitos, sin espacios"
-              class="flex-1 rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent" />
+              class="flex-1 rounded-xl border border-white/60 bg-white/50 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent" />
           </div>
         </div>
 
         <div>
           <label class="block text-sm font-medium text-slate-700 mb-1">Correo electrónico</label>
           <input id="f-correo" type="email" required placeholder="tucorreo@ejemplo.com"
-            class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent" />
+            class="w-full rounded-xl border border-white/60 bg-white/50 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent" />
         </div>
 
         <div>
           <label class="block text-sm font-medium text-slate-700 mb-1">Recompensa <span class="text-slate-400 font-normal">(opcional)</span></label>
           <input id="f-recompensa" type="text" placeholder="Ej. $100 o un café"
-            class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent" />
+            class="w-full rounded-xl border border-white/60 bg-white/50 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent" />
           <p class="text-xs text-slate-400 mt-1">Se mostrará a quien encuentre tu objeto como incentivo para devolverlo.</p>
         </div>
 
         <p id="form-error" class="text-sm text-red-500 hidden"></p>
 
         <button type="submit" id="btn-submit"
-          class="w-full bg-brand-600 hover:bg-brand-700 active:scale-[0.98] transition text-white font-semibold py-3 rounded-xl shadow-lg shadow-brand-600/20">
+          class="w-full btn-primary active:scale-[0.97] font-semibold py-3 rounded-full">
           Enviar solicitud
         </button>
       </form>
@@ -304,7 +288,7 @@ function renderRegistro() {
     const update = () => {
       inputs.forEach(input => {
         input.closest('label').classList.toggle('border-brand-500', input.checked);
-        input.closest('label').classList.toggle('bg-brand-50', input.checked);
+        input.closest('label').classList.toggle('bg-brand-50/70', input.checked);
       });
     };
     inputs.forEach(input => input.addEventListener('change', update));
@@ -362,7 +346,7 @@ function renderRegistro() {
         : `Te enviaremos los datos de pago por WhatsApp para completar tu transferencia de <strong>${fmtMoney(paquete.precio)}</strong>.`;
 
       renderShell(`
-        <div class="bg-white rounded-2xl shadow-xl shadow-slate-200/60 border border-slate-100 p-6 sm:p-8 text-center pop-in">
+        <div class="glass-strong rounded-[28px] p-6 sm:p-8 text-center pop-in">
           <div class="inline-flex items-center gap-2 bg-emerald-50 text-emerald-700 text-xs font-semibold px-3 py-1 rounded-full mb-4">
             ${ICONS.check} ¡Solicitud recibida!
           </div>
@@ -391,7 +375,7 @@ async function renderPublico(id) {
 
   if (!result.ok) {
     renderShell(`
-      <div class="bg-white rounded-2xl shadow-xl border border-slate-100 p-8 text-center">
+      <div class="glass-strong rounded-[28px] p-8 text-center">
         <div class="text-4xl mb-3">🔍</div>
         <h1 class="text-lg font-bold text-slate-800">Tag no encontrado</h1>
         <p class="text-sm text-slate-500 mt-2">El código <strong>${escapeHtml(id)}</strong> no existe en nuestra base de datos.</p>
@@ -414,9 +398,9 @@ function drawPublico(record) {
   const isRecovered = record.Recuperado === 'Sí';
 
   renderShell(`
-    <div class="bg-white rounded-2xl shadow-xl shadow-slate-200/60 border border-slate-100 overflow-hidden pop-in">
+    <div class="glass-strong rounded-[28px] overflow-hidden pop-in">
 
-      <div class="bg-gradient-to-br from-brand-600 to-brand-800 text-white px-6 py-6 text-center">
+      <div class="text-white px-6 py-6 text-center" style="background: linear-gradient(135deg, #818cf8, #4f46e5 55%, #4338ca);">
         <div class="text-3xl mb-1 pop-in" style="animation-delay:.1s">📦</div>
         <h1 class="text-lg font-bold">¡Objeto encontrado!</h1>
         <p class="text-sm text-brand-100 mt-0.5">Ayuda a devolverlo a su dueño</p>
@@ -430,17 +414,17 @@ function drawPublico(record) {
 
       <div class="p-6 sm:p-8 space-y-5">
         <div class="grid grid-cols-2 gap-3 text-center">
-          <div class="bg-slate-50 rounded-xl py-3 px-2">
+          <div class="bg-white/50 rounded-xl py-3 px-2">
             <p class="text-xs text-slate-400 font-medium">Dueño</p>
             <p class="text-sm font-semibold text-slate-800 mt-0.5">${escapeHtml(record.Nombre)}</p>
           </div>
-          <div class="bg-slate-50 rounded-xl py-3 px-2">
+          <div class="bg-white/50 rounded-xl py-3 px-2">
             <p class="text-xs text-slate-400 font-medium">Carrera</p>
             <p class="text-sm font-semibold text-slate-800 mt-0.5">${escapeHtml(record.Carrera)}</p>
           </div>
         </div>
 
-        <div class="bg-slate-50 rounded-xl py-3 px-2 text-center">
+        <div class="bg-white/50 rounded-xl py-3 px-2 text-center">
           <p class="text-xs text-slate-400 font-medium">Centro universitario</p>
           <p class="text-sm font-semibold text-slate-800 mt-0.5">${escapeHtml(record.Centro)}</p>
         </div>
@@ -454,16 +438,16 @@ function drawPublico(record) {
 
         <div class="space-y-3 pt-1">
           <a href="${waUrl}" target="_blank" rel="noopener noreferrer"
-            class="flex items-center justify-center gap-2 bg-[#25D366] hover:brightness-95 active:scale-[0.98] transition text-white font-semibold py-3.5 rounded-xl shadow-lg shadow-green-500/20">
+            class="flex items-center justify-center gap-2 bg-[#25D366] hover:brightness-95 active:scale-[0.97] transition text-white font-semibold py-3.5 rounded-full shadow-lg shadow-green-500/25">
             ${ICONS.whatsapp} Contactar por WhatsApp
           </a>
           <a href="${mailUrl}"
-            class="flex items-center justify-center gap-2 bg-white border border-slate-300 hover:bg-slate-50 active:scale-[0.98] transition text-slate-700 font-semibold py-3 rounded-xl">
+            class="flex items-center justify-center gap-2 btn-glass active:scale-[0.97] text-slate-700 font-semibold py-3 rounded-full">
             ${ICONS.mail} Enviar correo
           </a>
         </div>
 
-        <div class="pt-3 border-t border-slate-100 text-center">
+        <div class="pt-3 border-t border-white/60 text-center">
           <button id="btn-toggle-recuperado"
             class="inline-flex items-center gap-1.5 text-xs font-medium text-slate-400 hover:text-brand-600 transition">
             ${isRecovered ? 'Marcar como activo de nuevo' : '¿Eres el dueño? Marcar como recuperado'}
